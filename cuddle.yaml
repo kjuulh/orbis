@@ -14,3 +14,10 @@ please:
   settings:
     api_url: https://git.front.kjuulh.io  
 
+scripts:
+  run:
+    type: shell
+  watch:
+    type: shell
+  test:
+    type: shell
