@@ -18,10 +18,20 @@ func NewScheduler(logger *slog.Logger) *Scheduler {
 }
 
 func (s *Scheduler) Execute(ctx context.Context) error {
+	acquiredLeader, err := s.acquireLeader(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !acquiredLeader {
+		s.logger.Info("gracefully shutting down non-elected scheduler")
+		return nil
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Info("gracefully shutting down scheduler")
+			s.logger.Info("gracefully shutting down elected scheduler")
 			return nil
 		default:
 			if err := s.process(ctx); err != nil {
@@ -31,11 +41,26 @@ func (s *Scheduler) Execute(ctx context.Context) error {
 	}
 }
 
+func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return false, nil
+
+		default:
+			// Attempt to acquire leader
+			//
+			return true, nil
+
+		}
+	}
+}
+
 func (s *Scheduler) process(ctx context.Context) error {
 	s.logger.Debug("scheduler processing items")
 
 	// FIXME: simulate work
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 2)
 
 	return nil
 }
