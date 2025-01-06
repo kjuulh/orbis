@@ -69,6 +69,7 @@ func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
 				continue
 			}
 
+			s.logger.Info("acquired lock, electing application to leader")
 			return true, nil
 
 		}
