@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
+	"git.front.kjuulh.io/kjuulh/orbis/internal/app"
 )
 
 func main() {
-	if err := newRoot().Execute(); err != nil {
+	app := app.NewApp()
+
+	if err := newRoot(app).Execute(); err != nil {
 		fmt.Printf("%s\n", err)
 		os.Exit(1)
 	}
