@@ -2,6 +2,8 @@ package app
 
 import (
 	"log/slog"
+
+	"git.front.kjuulh.io/kjuulh/orbis/internal/scheduler"
 )
 
 type App struct {
@@ -16,4 +18,8 @@ func NewApp() *App {
 
 func (a *App) Logger() *slog.Logger {
 	return a.logger
+}
+
+func (a *App) Scheduler() *scheduler.Scheduler {
+	return scheduler.NewScheduler(a.logger)
 }
