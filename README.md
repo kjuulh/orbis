@@ -1,3 +1,3 @@
 # Orbis
 
-!(orbis demo)[assets/demo.gif]
+![orbis demo](assets/demo.gif)
