@@ -2,18 +2,24 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type Scheduler struct {
 	logger *slog.Logger
+	db     *pgx.Conn
 }
 
-func NewScheduler(logger *slog.Logger) *Scheduler {
+func NewScheduler(logger *slog.Logger, db *pgx.Conn) *Scheduler {
 	return &Scheduler{
 		logger: logger,
+		db:     db,
 	}
 }
 
@@ -48,8 +54,21 @@ func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
 			return false, nil
 
 		default:
-			// Attempt to acquire leader
-			//
+			var acquiredLock bool
+			if err := s.db.QueryRow(ctx, "SELECT pg_try_advisory_lock(1234)").Scan(&acquiredLock); err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return false, nil
+				}
+			}
+
+			if !acquiredLock {
+				wait := time.Second * time.Duration(rand.Float32()*9+1)
+
+				s.logger.Debug("failed to acquire lock, parking non-elected scheduler", "wait_seconds", wait)
+				time.Sleep(wait)
+				continue
+			}
+
 			return true, nil
 
 		}

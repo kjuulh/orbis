@@ -21,3 +21,7 @@ scripts:
     type: shell
   test:
     type: shell
+  local_up:
+    type: shell
+  local_down:
+    type: shell

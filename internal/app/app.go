@@ -21,5 +21,5 @@ func (a *App) Logger() *slog.Logger {
 }
 
 func (a *App) Scheduler() *scheduler.Scheduler {
-	return scheduler.NewScheduler(a.logger)
+	return scheduler.NewScheduler(a.logger, Postgres())
 }
