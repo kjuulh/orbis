@@ -8,18 +8,21 @@ import (
 	"math/rand"
 	"time"
 
+	"git.front.kjuulh.io/kjuulh/orbis/internal/executor"
 	"github.com/jackc/pgx/v5"
 )
 
 type Scheduler struct {
-	logger *slog.Logger
-	db     *pgx.Conn
+	logger   *slog.Logger
+	db       *pgx.Conn
+	executor *executor.Executor
 }
 
-func NewScheduler(logger *slog.Logger, db *pgx.Conn) *Scheduler {
+func NewScheduler(logger *slog.Logger, db *pgx.Conn, executor *executor.Executor) *Scheduler {
 	return &Scheduler{
-		logger: logger,
-		db:     db,
+		logger:   logger,
+		db:       db,
+		executor: executor,
 	}
 }
 
@@ -34,12 +37,14 @@ func (s *Scheduler) Execute(ctx context.Context) error {
 		return nil
 	}
 
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			s.logger.Info("gracefully shutting down elected scheduler")
 			return nil
-		default:
+		case <-ticker.C:
 			if err := s.process(ctx); err != nil {
 				return fmt.Errorf("scheduler failed: %w", err)
 			}
@@ -52,7 +57,6 @@ func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
 		select {
 		case <-ctx.Done():
 			return false, nil
-
 		default:
 			var acquiredLock bool
 			if err := s.db.QueryRow(ctx, "SELECT pg_try_advisory_lock(1234)").Scan(&acquiredLock); err != nil {
@@ -77,10 +81,9 @@ func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
 }
 
 func (s *Scheduler) process(ctx context.Context) error {
-	s.logger.Debug("scheduler processing items")
-
-	// FIXME: simulate work
-	time.Sleep(time.Second * 2)
+	if err := s.executor.DispatchEvents(ctx); err != nil {
+		return fmt.Errorf("failed to dispatch events: %w", err)
+	}
 
 	return nil
 }

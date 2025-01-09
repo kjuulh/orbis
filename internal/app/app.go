@@ -3,6 +3,7 @@ package app
 import (
 	"log/slog"
 
+	"git.front.kjuulh.io/kjuulh/orbis/internal/executor"
 	"git.front.kjuulh.io/kjuulh/orbis/internal/scheduler"
 )
 
@@ -21,5 +22,9 @@ func (a *App) Logger() *slog.Logger {
 }
 
 func (a *App) Scheduler() *scheduler.Scheduler {
-	return scheduler.NewScheduler(a.logger, Postgres())
+	return scheduler.NewScheduler(a.logger.With("component", "scheduler"), Postgres(), a.Executor())
+}
+
+func (a *App) Executor() *executor.Executor {
+	return executor.NewExecutor(a.logger.With("component", "executor"))
 }
