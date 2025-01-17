@@ -1,0 +1,5 @@
+[sqlfluff]
+dialect = postgres         ; or whatever SQL dialect you use
+
+[sqlfluff:layout:type:comma]
+line_position = leading

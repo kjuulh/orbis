@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-
 	"git.front.kjuulh.io/kjuulh/orbis/internal/app"
+	"git.front.kjuulh.io/kjuulh/orbis/internal/processes"
 	"github.com/spf13/cobra"
 )
 
@@ -18,11 +17,11 @@ func newRoot(app *app.App) *cobra.Command {
 			ctx := cmd.Context()
 			logger.Info("starting orbis")
 
-			if err := app.Scheduler().Execute(ctx); err != nil {
-				return fmt.Errorf("scheduler failed with error: %w", err)
-			}
-
-			return nil
+			return processes.
+				NewApp(logger).
+				Add(app.Scheduler()).
+				Add(app.Worker()).
+				Execute(ctx)
 		},
 	}
 

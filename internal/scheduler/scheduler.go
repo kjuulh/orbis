@@ -10,20 +10,29 @@ import (
 
 	"git.front.kjuulh.io/kjuulh/orbis/internal/executor"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Scheduler struct {
 	logger   *slog.Logger
-	db       *pgx.Conn
+	db       *pgxpool.Pool
 	executor *executor.Executor
 }
 
-func NewScheduler(logger *slog.Logger, db *pgx.Conn, executor *executor.Executor) *Scheduler {
+func NewScheduler(logger *slog.Logger, db *pgxpool.Pool, executor *executor.Executor) *Scheduler {
 	return &Scheduler{
 		logger:   logger,
 		db:       db,
 		executor: executor,
 	}
+}
+
+func (s *Scheduler) Start(ctx context.Context) error {
+	if err := s.Execute(ctx); err != nil {
+		return fmt.Errorf("execution of scheduler failed: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Scheduler) Execute(ctx context.Context) error {
