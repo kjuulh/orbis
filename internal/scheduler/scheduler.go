@@ -67,8 +67,13 @@ func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
 		case <-ctx.Done():
 			return false, nil
 		default:
+			db, err := s.db.Acquire(ctx)
+			if err != nil {
+				return false, fmt.Errorf("failed to acquire db connection: %w", err)
+			}
+
 			var acquiredLock bool
-			if err := s.db.QueryRow(ctx, "SELECT pg_try_advisory_lock(1234)").Scan(&acquiredLock); err != nil {
+			if err := db.QueryRow(ctx, "SELECT pg_try_advisory_lock(1234)").Scan(&acquiredLock); err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
 					return false, nil
 				}
