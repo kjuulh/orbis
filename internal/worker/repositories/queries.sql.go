@@ -66,6 +66,17 @@ func (q *Queries) Ping(ctx context.Context) (int32, error) {
 	return column_1, err
 }
 
+const pruneWorker = `-- name: PruneWorker :exec
+DELETE FROM worker_register
+WHERE
+    heart_beat <= now() - INTERVAL '10 minutes'
+`
+
+func (q *Queries) PruneWorker(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, pruneWorker)
+	return err
+}
+
 const registerWorker = `-- name: RegisterWorker :exec
 INSERT INTO worker_register (worker_id, capacity)
 VALUES (

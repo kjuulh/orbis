@@ -40,7 +40,7 @@ func (w *WorkProcessor) ProcessNext(ctx context.Context, workerID uuid.UUID) err
 		return fmt.Errorf("failed to start processing items: %w", err)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Millisecond * 10)
 
 	if err := w.workscheduler.Archive(ctx, *schedule); err != nil {
 		return fmt.Errorf("failed to archive item: %w", err)

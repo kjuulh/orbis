@@ -26,3 +26,8 @@ WHERE
 DELETE FROM worker_register
 WHERE
     worker_id = $1;
+
+-- name: PruneWorker :exec
+DELETE FROM worker_register
+WHERE
+    heart_beat <= now() - INTERVAL '10 minutes';

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.front.kjuulh.io/kjuulh/orbis/internal/executor"
+	"git.front.kjuulh.io/kjuulh/orbis/internal/worker"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -17,13 +18,15 @@ type Scheduler struct {
 	logger   *slog.Logger
 	db       *pgxpool.Pool
 	executor *executor.Executor
+	worker   *worker.Worker
 }
 
-func NewScheduler(logger *slog.Logger, db *pgxpool.Pool, executor *executor.Executor) *Scheduler {
+func NewScheduler(logger *slog.Logger, db *pgxpool.Pool, executor *executor.Executor, worker *worker.Worker) *Scheduler {
 	return &Scheduler{
 		logger:   logger,
 		db:       db,
 		executor: executor,
+		worker:   worker,
 	}
 }
 
@@ -96,6 +99,10 @@ func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
 }
 
 func (s *Scheduler) process(ctx context.Context) error {
+	if err := s.worker.Prune(ctx); err != nil {
+		return fmt.Errorf("failed to prune error: %w", err)
+	}
+
 	if err := s.executor.DispatchEvents(ctx); err != nil {
 		return fmt.Errorf("failed to dispatch events: %w", err)
 	}

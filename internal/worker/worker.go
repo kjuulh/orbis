@@ -173,3 +173,9 @@ func (w *Worker) updateHeartBeat(ctx context.Context) error {
 func (w *Worker) processWorkQueue(ctx context.Context) error {
 	return w.workProcessor.ProcessNext(ctx, w.workerID)
 }
+
+func (w *Worker) Prune(ctx context.Context) error {
+	repo := repositories.New(w.db)
+
+	return repo.PruneWorker(ctx)
+}

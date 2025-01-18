@@ -14,6 +14,7 @@ type Querier interface {
 	DeregisterWorker(ctx context.Context, workerID uuid.UUID) error
 	GetWorkers(ctx context.Context) ([]*GetWorkersRow, error)
 	Ping(ctx context.Context) (int32, error)
+	PruneWorker(ctx context.Context) error
 	RegisterWorker(ctx context.Context, arg *RegisterWorkerParams) error
 	UpdateWorkerHeartbeat(ctx context.Context, workerID uuid.UUID) error
 }
