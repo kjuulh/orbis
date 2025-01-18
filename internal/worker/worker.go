@@ -24,6 +24,9 @@ type Worker struct {
 	workProcessor workProcessor
 	logger        *slog.Logger
 
+	heartBeatCancel context.CancelFunc
+	heartBeatCtx    context.Context
+
 	capacity uint
 }
 
@@ -54,6 +57,67 @@ func (w *Worker) Setup(ctx context.Context) error {
 		},
 	); err != nil {
 		return nil
+	}
+
+	w.heartBeatCtx, w.heartBeatCancel = context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(time.Second * 5)
+		errorCount := 0
+
+		for {
+			select {
+			case <-w.heartBeatCtx.Done():
+				return
+			case <-ticker.C:
+				if err := w.updateHeartBeat(w.heartBeatCtx); err != nil {
+					if errorCount >= 5 {
+						panic(fmt.Errorf("worker failed to register heartbeat for a long time, panicing..., err: %w", err))
+					}
+					errorCount += 1
+				} else {
+					errorCount = 0
+				}
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (w *Worker) Start(ctx context.Context) error {
+	for {
+		select {
+		case <-w.heartBeatCtx.Done():
+			return nil
+			//	case <-ctx.Done():
+			//		return nil
+		default:
+			if err := w.processWorkQueue(ctx); err != nil {
+				// FIXME: dead letter item, right now we just log and continue
+
+				w.logger.WarnContext(ctx, "failed to handle work item", "error", err)
+			}
+		}
+	}
+}
+
+func (w *Worker) Close(ctx context.Context) error {
+	if w.heartBeatCancel != nil {
+		w.heartBeatCancel()
+	}
+
+	if w.heartBeatCtx != nil {
+		<-w.heartBeatCtx.Done()
+
+		repo := repositories.New(w.db)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		w.logger.InfoContext(ctx, "deregistering worker", "worker_id", w.workerID)
+		if err := repo.DeregisterWorker(ctx, w.workerID); err != nil {
+			return fmt.Errorf("failed to deregister worker: %s, err: %w", w.workerID, err)
+		}
 	}
 
 	return nil
@@ -97,47 +161,6 @@ func (w *Worker) GetWorkers(ctx context.Context) (*Workers, error) {
 	return &Workers{
 		Instances: instances,
 	}, nil
-}
-
-func (w *Worker) Start(ctx context.Context) error {
-	heartBeatCtx, heartBeatCancel := context.WithCancel(context.Background())
-	go func() {
-		ticker := time.NewTicker(time.Second * 5)
-		errorCount := 0
-
-		for {
-			select {
-			case <-heartBeatCtx.Done():
-				return
-			case <-ticker.C:
-				if err := w.updateHeartBeat(heartBeatCtx); err != nil {
-					if errorCount >= 5 {
-						panic(fmt.Errorf("worker failed to register heartbeat for a long time, panicing..., err: %w", err))
-					}
-					errorCount += 1
-				} else {
-					errorCount = 0
-				}
-			}
-		}
-	}()
-
-	defer func() {
-		heartBeatCancel()
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			if err := w.processWorkQueue(ctx); err != nil {
-				// FIXME: dead letter item, right now we just log and continue
-
-				w.logger.WarnContext(ctx, "failed to handle work item", "error", err)
-			}
-		}
-	}
 }
 
 func (w *Worker) updateHeartBeat(ctx context.Context) error {

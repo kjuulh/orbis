@@ -11,6 +11,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const deregisterWorker = `-- name: DeregisterWorker :exec
+DELETE FROM worker_register
+WHERE
+    worker_id = $1
+`
+
+func (q *Queries) DeregisterWorker(ctx context.Context, workerID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deregisterWorker, workerID)
+	return err
+}
+
 const getWorkers = `-- name: GetWorkers :many
 SELECT 
       worker_id

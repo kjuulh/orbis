@@ -3,6 +3,9 @@ package processes
 import (
 	"context"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -23,17 +26,43 @@ type CloseProcesser interface {
 type App struct {
 	logger    *slog.Logger
 	processes []Process
+
+	externalDone chan bool
 }
 
 func NewApp(logger *slog.Logger) *App {
 	return &App{
-		logger:    logger,
-		processes: make([]Process, 0),
+		logger:       logger,
+		processes:    make([]Process, 0),
+		externalDone: make(chan bool),
 	}
 }
 
 func (a *App) Add(p Process) *App {
 	a.processes = append(a.processes, p)
+
+	return a
+}
+
+func (a *App) WithSignal(stop func()) *App {
+	go func() {
+		stop()
+
+		a.externalDone <- true
+	}()
+
+	return a
+}
+
+func (a *App) WithCtrlC() *App {
+	go func() {
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+		<-stop
+
+		a.externalDone <- true
+	}()
 
 	return a
 }
@@ -49,7 +78,7 @@ func (a *App) Execute(ctx context.Context) error {
 		return nil
 	}
 
-	processErr := processes.wait(ctx)
+	processErr := processes.wait(ctx, a.externalDone)
 
 	if err := a.closeProcesses(ctx, processes); err != nil {
 		if processErr != nil {
@@ -87,10 +116,6 @@ func (a *App) closeProcesses(ctx context.Context, processes *processStatus) erro
 		closeErrs <- errgrp.Wait()
 	}()
 
-	for _, closeHandle := range processes.processHandles {
-		closeHandle()
-	}
-
 	select {
 	case <-waitClose.Done():
 		return nil
@@ -102,6 +127,10 @@ func (a *App) closeProcesses(ctx context.Context, processes *processStatus) erro
 		}
 	}
 
+	for _, closeHandle := range processes.processHandles {
+		closeHandle()
+	}
+
 	return nil
 }
 
@@ -110,8 +139,13 @@ type processStatus struct {
 	processHandles []context.CancelFunc
 }
 
-func (p *processStatus) wait(_ context.Context) error {
-	return <-p.errs
+func (p *processStatus) wait(_ context.Context, externalDone chan bool) error {
+	select {
+	case err := <-p.errs:
+		return err
+	case <-externalDone:
+		return nil
+	}
 }
 
 func (a *App) startProcesses(ctx context.Context) (*processStatus, any) {

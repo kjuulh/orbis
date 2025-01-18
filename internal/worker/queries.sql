@@ -22,3 +22,7 @@ SET
 WHERE
     worker_id = $1;
 
+-- name: DeregisterWorker :exec
+DELETE FROM worker_register
+WHERE
+    worker_id = $1;
