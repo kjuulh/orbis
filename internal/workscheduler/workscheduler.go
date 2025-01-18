@@ -177,3 +177,47 @@ func (w *WorkScheduler) Archive(ctx context.Context, scheduleID uuid.UUID) error
 
 	return repo.Archive(ctx, scheduleID)
 }
+
+func (w *WorkScheduler) GetUnattended(ctx context.Context, registeredWorkers *worker.Workers) error {
+	if len(registeredWorkers.Instances) == 0 {
+		return nil
+	}
+
+	repo := repositories.New(w.db)
+
+	schedules, err := repo.GetUnattended(ctx, &repositories.GetUnattendedParams{
+		WorkerIds: workerIDs(registeredWorkers),
+		Amount:    100,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get unattended workers: %w", err)
+	}
+
+	for i, schedule := range schedules {
+		worker := registeredWorkers.Instances[i%len(registeredWorkers.Instances)].WorkerID
+
+		w.logger.InfoContext(ctx, "dispatching schedule for worker", "worker", worker, "schedule", schedule.ScheduleID)
+
+		if err := repo.UpdateSchdule(
+			ctx,
+			&repositories.UpdateSchduleParams{
+				WorkerID:   worker,
+				ScheduleID: schedule.ScheduleID,
+			},
+		); err != nil {
+			return fmt.Errorf("failed to update schedule: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func workerIDs(registeredWorkers *worker.Workers) []uuid.UUID {
+	uuids := make([]uuid.UUID, 0, len(registeredWorkers.Instances))
+
+	for _, registeredWorker := range registeredWorkers.Instances {
+		uuids = append(uuids, registeredWorker.WorkerID)
+	}
+
+	return uuids
+}

@@ -68,6 +68,51 @@ func (q *Queries) GetNext(ctx context.Context, workerID uuid.UUID) (*WorkSchedul
 	return &i, err
 }
 
+const getUnattended = `-- name: GetUnattended :many
+SELECT
+    schedule_id, worker_id, start_run, end_run, updated_at, state
+FROM 
+    work_schedule
+WHERE
+        worker_id NOT IN (SELECT unnest($1::uuid[]))
+    AND state <> 'archived'
+    --AND updated_at <= now() - INTERVAL '10 minutes'
+ORDER BY updated_at DESC
+LIMIT $2::integer
+`
+
+type GetUnattendedParams struct {
+	WorkerIds []uuid.UUID `json:"worker_ids"`
+	Amount    int32       `json:"amount"`
+}
+
+func (q *Queries) GetUnattended(ctx context.Context, arg *GetUnattendedParams) ([]*WorkSchedule, error) {
+	rows, err := q.db.Query(ctx, getUnattended, arg.WorkerIds, arg.Amount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*WorkSchedule{}
+	for rows.Next() {
+		var i WorkSchedule
+		if err := rows.Scan(
+			&i.ScheduleID,
+			&i.WorkerID,
+			&i.StartRun,
+			&i.EndRun,
+			&i.UpdatedAt,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertQueueItem = `-- name: InsertQueueItem :exec
 INSERT INTO work_schedule
     (
@@ -125,5 +170,25 @@ WHERE
 
 func (q *Queries) StartProcessing(ctx context.Context, scheduleID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, startProcessing, scheduleID)
+	return err
+}
+
+const updateSchdule = `-- name: UpdateSchdule :exec
+UPDATE work_schedule
+SET
+      state = 'pending'
+    , worker_id = $1
+    , updated_at = now()
+WHERE
+    schedule_id = $2
+`
+
+type UpdateSchduleParams struct {
+	WorkerID   uuid.UUID `json:"worker_id"`
+	ScheduleID uuid.UUID `json:"schedule_id"`
+}
+
+func (q *Queries) UpdateSchdule(ctx context.Context, arg *UpdateSchduleParams) error {
+	_, err := q.db.Exec(ctx, updateSchdule, arg.WorkerID, arg.ScheduleID)
 	return err
 }

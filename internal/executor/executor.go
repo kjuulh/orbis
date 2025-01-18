@@ -39,6 +39,7 @@ func NewExecutor(
 }
 
 func (e *Executor) DispatchEvents(ctx context.Context) error {
+
 	e.logger.InfoContext(ctx, "dispatching events")
 
 	start := time.Now().Add(-time.Second * 30)
@@ -52,6 +53,11 @@ func (e *Executor) DispatchEvents(ctx context.Context) error {
 	registeredWorkers, err := e.worker.GetWorkers(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to find workers: %w", err)
+	}
+
+	e.logger.InfoContext(ctx, "moving unattended events")
+	if err := e.workerscheduler.GetUnattended(ctx, registeredWorkers); err != nil {
+		return fmt.Errorf("failed to move unattended events: %w", err)
 	}
 
 	workers, err := e.workerscheduler.GetWorkers(ctx, registeredWorkers)

@@ -54,3 +54,23 @@ SET
 WHERE
     schedule_id = $1;
    
+-- name: GetUnattended :many
+SELECT
+    *
+FROM 
+    work_schedule
+WHERE
+        worker_id NOT IN (SELECT unnest(@worker_ids::uuid[]))
+    AND state <> 'archived'
+    --AND updated_at <= now() - INTERVAL '10 minutes'
+ORDER BY updated_at DESC
+LIMIT @amount::integer;
+
+-- name: UpdateSchdule :exec
+UPDATE work_schedule
+SET
+      state = 'pending'
+    , worker_id = $1
+    , updated_at = now()
+WHERE
+    schedule_id = $2;

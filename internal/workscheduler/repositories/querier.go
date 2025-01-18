@@ -14,9 +14,11 @@ type Querier interface {
 	Archive(ctx context.Context, scheduleID uuid.UUID) error
 	GetCurrentQueueSize(ctx context.Context, workerID uuid.UUID) (int64, error)
 	GetNext(ctx context.Context, workerID uuid.UUID) (*WorkSchedule, error)
+	GetUnattended(ctx context.Context, arg *GetUnattendedParams) ([]*WorkSchedule, error)
 	InsertQueueItem(ctx context.Context, arg *InsertQueueItemParams) error
 	Ping(ctx context.Context) (int32, error)
 	StartProcessing(ctx context.Context, scheduleID uuid.UUID) error
+	UpdateSchdule(ctx context.Context, arg *UpdateSchduleParams) error
 }
 
 var _ Querier = (*Queries)(nil)

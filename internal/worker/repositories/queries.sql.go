@@ -69,7 +69,7 @@ func (q *Queries) Ping(ctx context.Context) (int32, error) {
 const pruneWorker = `-- name: PruneWorker :exec
 DELETE FROM worker_register
 WHERE
-    heart_beat <= now() - INTERVAL '10 minutes'
+    heart_beat <= now() - INTERVAL '1 minutes'
 `
 
 func (q *Queries) PruneWorker(ctx context.Context) error {
