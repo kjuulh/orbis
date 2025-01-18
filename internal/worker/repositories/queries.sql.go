@@ -11,6 +11,39 @@ import (
 	"github.com/google/uuid"
 )
 
+const getWorkers = `-- name: GetWorkers :many
+SELECT 
+      worker_id
+    , capacity
+FROM
+    worker_register
+`
+
+type GetWorkersRow struct {
+	WorkerID uuid.UUID `json:"worker_id"`
+	Capacity int32     `json:"capacity"`
+}
+
+func (q *Queries) GetWorkers(ctx context.Context) ([]*GetWorkersRow, error) {
+	rows, err := q.db.Query(ctx, getWorkers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetWorkersRow{}
+	for rows.Next() {
+		var i GetWorkersRow
+		if err := rows.Scan(&i.WorkerID, &i.Capacity); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ping = `-- name: Ping :one
 SELECT 1
 `
@@ -23,14 +56,20 @@ func (q *Queries) Ping(ctx context.Context) (int32, error) {
 }
 
 const registerWorker = `-- name: RegisterWorker :exec
-INSERT INTO worker_register (worker_id)
+INSERT INTO worker_register (worker_id, capacity)
 VALUES (
-    $1
+      $1
+    , $2
 )
 `
 
-func (q *Queries) RegisterWorker(ctx context.Context, workerID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, registerWorker, workerID)
+type RegisterWorkerParams struct {
+	WorkerID uuid.UUID `json:"worker_id"`
+	Capacity int32     `json:"capacity"`
+}
+
+func (q *Queries) RegisterWorker(ctx context.Context, arg *RegisterWorkerParams) error {
+	_, err := q.db.Exec(ctx, registerWorker, arg.WorkerID, arg.Capacity)
 	return err
 }
 

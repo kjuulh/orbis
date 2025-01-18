@@ -11,34 +11,92 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type workProcessor interface {
+	ProcessNext(ctx context.Context, worker_id uuid.UUID) error
+}
+
 //go:generate sqlc generate
 
 type Worker struct {
 	workerID uuid.UUID
 
-	db     *pgxpool.Pool
-	logger *slog.Logger
+	db            *pgxpool.Pool
+	workProcessor workProcessor
+	logger        *slog.Logger
+
+	capacity uint
 }
 
 func NewWorker(
 	db *pgxpool.Pool,
 	logger *slog.Logger,
+	workProcessor workProcessor,
 ) *Worker {
 	return &Worker{
-		workerID: uuid.New(),
-		db:       db,
-		logger:   logger,
+		workerID:      uuid.New(),
+		db:            db,
+		workProcessor: workProcessor,
+		logger:        logger,
+
+		capacity: 50,
 	}
 }
 
 func (w *Worker) Setup(ctx context.Context) error {
 	repo := repositories.New(w.db)
 
-	if err := repo.RegisterWorker(ctx, w.workerID); err != nil {
+	w.logger.InfoContext(ctx, "setting up worker", "worker_id", w.workerID)
+	if err := repo.RegisterWorker(
+		ctx,
+		&repositories.RegisterWorkerParams{
+			WorkerID: w.workerID,
+			Capacity: int32(w.capacity),
+		},
+	); err != nil {
 		return nil
 	}
 
 	return nil
+}
+
+type Workers struct {
+	Instances []WorkerInstance
+}
+
+func (w *Workers) Capacity() uint {
+	capacity := uint(0)
+
+	for _, worker := range w.Instances {
+		capacity += worker.Capacity
+	}
+
+	return capacity
+}
+
+type WorkerInstance struct {
+	WorkerID uuid.UUID
+	Capacity uint
+}
+
+func (w *Worker) GetWorkers(ctx context.Context) (*Workers, error) {
+	repo := repositories.New(w.db)
+
+	dbInstances, err := repo.GetWorkers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find workers: %w", err)
+	}
+
+	instances := make([]WorkerInstance, 0, len(dbInstances))
+	for _, dbInstance := range dbInstances {
+		instances = append(instances, WorkerInstance{
+			WorkerID: dbInstance.WorkerID,
+			Capacity: uint(dbInstance.Capacity),
+		})
+	}
+
+	return &Workers{
+		Instances: instances,
+	}, nil
 }
 
 func (w *Worker) Start(ctx context.Context) error {
@@ -69,10 +127,15 @@ func (w *Worker) Start(ctx context.Context) error {
 	}()
 
 	for {
-		if err := w.processWorkQueue(ctx); err != nil {
-			// FIXME: dead letter item, right now we just log and continue
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			if err := w.processWorkQueue(ctx); err != nil {
+				// FIXME: dead letter item, right now we just log and continue
 
-			w.logger.WarnContext(ctx, "failed to handle work item", "error", err)
+				w.logger.WarnContext(ctx, "failed to handle work item", "error", err)
+			}
 		}
 	}
 }
@@ -84,8 +147,6 @@ func (w *Worker) updateHeartBeat(ctx context.Context) error {
 	return repo.UpdateWorkerHeartbeat(ctx, w.workerID)
 }
 
-func (w *Worker) processWorkQueue(_ context.Context) error {
-	time.Sleep(time.Second)
-
-	return nil
+func (w *Worker) processWorkQueue(ctx context.Context) error {
+	return w.workProcessor.ProcessNext(ctx, w.workerID)
 }

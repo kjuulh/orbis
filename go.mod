@@ -3,6 +3,7 @@ module git.front.kjuulh.io/kjuulh/orbis
 go 1.23.4
 
 require (
+	github.com/adhocore/gronx v1.19.5
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2

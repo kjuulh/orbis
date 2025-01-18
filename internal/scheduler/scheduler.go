@@ -62,12 +62,13 @@ func (s *Scheduler) Execute(ctx context.Context) error {
 }
 
 func (s *Scheduler) acquireLeader(ctx context.Context) (bool, error) {
+	db, err := s.db.Acquire(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return false, nil
 		default:
-			db, err := s.db.Acquire(ctx)
 			if err != nil {
 				return false, fmt.Errorf("failed to acquire db connection: %w", err)
 			}

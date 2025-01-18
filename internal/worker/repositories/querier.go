@@ -11,8 +11,9 @@ import (
 )
 
 type Querier interface {
+	GetWorkers(ctx context.Context) ([]*GetWorkersRow, error)
 	Ping(ctx context.Context) (int32, error)
-	RegisterWorker(ctx context.Context, workerID uuid.UUID) error
+	RegisterWorker(ctx context.Context, arg *RegisterWorkerParams) error
 	UpdateWorkerHeartbeat(ctx context.Context, workerID uuid.UUID) error
 }
 
