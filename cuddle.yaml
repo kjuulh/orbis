@@ -25,3 +25,18 @@ scripts:
     type: shell
   local_down:
     type: shell
+  ci:main:
+    type: shell
+    args:
+      version:
+        type: flag
+        name: version
+        required: false
+
+  publish:
+    type: shell
+    args:
+      version:
+        type: flag
+        name: version
+        required: true
