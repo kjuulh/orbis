@@ -20,3 +20,8 @@ CREATE TABLE work_schedule (
 
 CREATE INDEX idx_work_schedule_worker ON work_schedule (worker_id);
 CREATE INDEX idx_work_schedule_worker_updated ON work_schedule (worker_id, updated_at DESC);
+
+CREATE TABLE dead_letter (
+      schedule_id UUID PRIMARY KEY NOT NULL
+    , updated_at TIMESTAMPTZ NOT NULL default now()
+);

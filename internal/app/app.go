@@ -3,6 +3,7 @@ package app
 import (
 	"log/slog"
 
+	"git.front.kjuulh.io/kjuulh/orbis/internal/deadletter"
 	"git.front.kjuulh.io/kjuulh/orbis/internal/executor"
 	"git.front.kjuulh.io/kjuulh/orbis/internal/modelschedule"
 	"git.front.kjuulh.io/kjuulh/orbis/internal/scheduler"
@@ -48,7 +49,11 @@ func (a *App) WorkScheduler() *workscheduler.WorkScheduler {
 }
 
 func (a *App) WorkProcessor() *workprocessor.WorkProcessor {
-	return workprocessor.NewWorkProcessor(a.WorkScheduler(), a.logger)
+	return workprocessor.NewWorkProcessor(a.WorkScheduler(), a.logger, a.DeadLetter())
+}
+
+func (a *App) DeadLetter() *deadletter.DeadLetter {
+	return deadletter.NewDeadLetter(Postgres(), a.logger)
 }
 
 func (a *App) ModelSchedule() *modelschedule.ModelSchedule {

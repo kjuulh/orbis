@@ -9,6 +9,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DeadLetter struct {
+	ScheduleID uuid.UUID          `json:"schedule_id"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
 type ModelSchedule struct {
 	ModelName string             `json:"model_name"`
 	LastRun   pgtype.Timestamptz `json:"last_run"`
