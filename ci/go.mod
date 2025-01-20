@@ -3,9 +3,9 @@ module dagger/ci
 go 1.23.2
 
 require (
-	github.com/99designs/gqlgen v0.17.57
+	github.com/99designs/gqlgen v0.17.63
 	github.com/Khan/genqlient v0.7.0
-	github.com/vektah/gqlparser/v2 v2.5.19
+	github.com/vektah/gqlparser/v2 v2.5.21
 	go.opentelemetry.io/otel v1.27.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.0.0-20240518090000-14441aefdf88
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.3.0
@@ -19,10 +19,10 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.3.0
 	go.opentelemetry.io/otel/sdk/metric v1.27.0
 	go.opentelemetry.io/otel/trace v1.27.0
-	go.opentelemetry.io/proto/otlp v1.3.1
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
+	go.opentelemetry.io/proto/otlp v1.5.0
+	golang.org/x/exp 7588d65b2ba8
 	golang.org/x/sync v0.10.0
-	google.golang.org/grpc v1.68.0
+	google.golang.org/grpc v1.69.4
 )
 
 require (
