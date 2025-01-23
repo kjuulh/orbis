@@ -16,7 +16,6 @@ func newRoot(app *app.App) *cobra.Command {
 		Short: "Orbis is a data workflow scheduler for all your batch and real-time needs",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			//ctx := cmd.Context()
 			logger.Info("starting orbis")
 
 			ctx := context.Background()

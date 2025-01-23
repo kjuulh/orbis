@@ -39,7 +39,6 @@ func NewExecutor(
 }
 
 func (e *Executor) DispatchEvents(ctx context.Context) error {
-
 	e.logger.InfoContext(ctx, "dispatching events")
 
 	start := time.Now().Add(-time.Second * 30)
